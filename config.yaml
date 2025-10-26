@@ -1,0 +1,50 @@
+# GPU 监控服务配置文件
+
+# Prometheus 配置
+prometheus:
+  url: "http://prometheus:9090"
+  query_condition: '{pod!=""}'  # 只监控已分配的GPU
+  time_window_min: 10  # 时间窗口（分钟）
+  step: "30s"  # 查询步长
+
+# 评分权重配置
+scoring:
+  gpu_util_weight: 0.5      # GPU核心使用率权重
+  mem_copy_weight: 0.2      # 内存拷贝使用率权重
+  mem_used_weight: 0.2      # 显存使用权重
+  power_weight: 0.1         # 功率权重
+
+# 阈值配置
+thresholds:
+  low_utilization: 20       # 低利用率阈值（%）
+  idle: 10                  # 闲置阈值（%）
+
+# 调度配置
+scheduler:
+  interval: 300             # 轮询周期（秒）
+  max_workers: 8            # 最大并发线程数
+
+# GPU 默认配置（用于归一化）
+gpu_defaults:
+  memory_mb: 32000          # 默认显存（MB）- V100S
+  power_w: 250              # 默认功率（W）- V100S
+
+# 控制接口配置
+control:
+  enabled: false            # 是否启用控制接口调用
+  api_url: "http://your-control-service/api/optimize"
+  timeout: 5                # 超时时间（秒）
+
+# AI 分析配置
+ai:
+  enabled: false            # 是否启用 AI 智能分析
+  api_url: ""               # AI API 地址（如：https://api.openai.com/v1/chat/completions）
+  api_key: ""               # AI API 密钥（建议使用环境变量设置）
+  model: "gpt-4"            # AI 模型（gpt-4, gpt-3.5-turbo, claude-3-opus 等）
+  threshold: 0.7            # AI 判断的置信度阈值
+
+# 日志配置
+logging:
+  level: "INFO"             # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+

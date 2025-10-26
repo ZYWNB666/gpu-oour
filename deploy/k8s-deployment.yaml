@@ -1,0 +1,127 @@
+# GPU Monitor - Kubernetes Deployment
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gpu-monitoring
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-monitor-config
+  namespace: gpu-monitoring
+data:
+  PROM_URL: "http://prometheus.monitoring:9090"
+  THRESHOLD: "20"
+  INTERVAL: "300"
+  MAX_WORKERS: "8"
+  TIME_WINDOW_MIN: "10"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-monitor
+  namespace: gpu-monitoring
+  labels:
+    app: gpu-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-monitor
+  template:
+    metadata:
+      labels:
+        app: gpu-monitor
+    spec:
+      containers:
+      - name: gpu-monitor
+        image: gpu-monitor:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: PROM_URL
+          valueFrom:
+            configMapKeyRef:
+              name: gpu-monitor-config
+              key: PROM_URL
+        - name: THRESHOLD
+          valueFrom:
+            configMapKeyRef:
+              name: gpu-monitor-config
+              key: THRESHOLD
+        - name: INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: gpu-monitor-config
+              key: INTERVAL
+        - name: MAX_WORKERS
+          valueFrom:
+            configMapKeyRef:
+              name: gpu-monitor-config
+              key: MAX_WORKERS
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-monitor
+  namespace: gpu-monitoring
+  labels:
+    app: gpu-monitor
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: gpu-monitor
+
+---
+# Optional: Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gpu-monitor
+  namespace: gpu-monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: gpu-monitor.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gpu-monitor
+            port:
+              number: 80
+

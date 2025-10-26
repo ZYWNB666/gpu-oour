@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  gpu-monitor:
+    build: .
+    container_name: gpu-monitor
+    ports:
+      - "8080:8080"
+    environment:
+      - PROM_URL=http://prometheus:9090
+      - THRESHOLD=20
+      - INTERVAL=300
+      - MAX_WORKERS=8
+      - CONTROL_API_ENABLED=false
+    restart: unless-stopped
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  monitoring:
+    external: true
+
