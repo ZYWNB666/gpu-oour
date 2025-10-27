@@ -52,8 +52,9 @@ class Scheduler:
         logger.info("Starting GPU utilization analysis")
         
         try:
-            # 执行分析
-            results = gpu_analyzer.analyze_all()
+            # 在线程池中执行分析，避免阻塞事件循环
+            loop = asyncio.get_event_loop()
+            results = await loop.run_in_executor(None, gpu_analyzer.analyze_all)
             
             if not results:
                 logger.warning("No GPU data found")
