@@ -29,29 +29,37 @@ import numpy as np
 # 配置日志（支持中文输出）
 def setup_logging():
     """配置日志系统，确保中文正常显示"""
-    # Windows 环境需要特殊处理编码
-    if sys.platform == 'win32':
-        try:
-            # 重新包装标准输出，使用 UTF-8 编码
-            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-        except AttributeError:
-            # 某些环境可能没有 buffer 属性
-            pass
+    # 强制设置 UTF-8 编码（适用于所有平台）
+    try:
+        # 重新包装标准输出流，强制使用 UTF-8 编码
+        if hasattr(sys.stdout, 'buffer'):
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+        if hasattr(sys.stderr, 'buffer'):
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+    except (AttributeError, ValueError) as e:
+        # 某些环境可能不支持，记录但不中断
+        print(f"Warning: Failed to set UTF-8 encoding: {e}")
     
-    # 创建日志处理器，明确指定 UTF-8 编码
+    # 创建日志处理器，使用 UTF-8 编码的流
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(getattr(logging, config.LOG_LEVEL))
-    handler.setFormatter(logging.Formatter(
+    
+    # 创建格式化器
+    formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
-    ))
+    )
+    handler.setFormatter(formatter)
     
     # 配置根日志
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, config.LOG_LEVEL))
     root_logger.handlers.clear()  # 清除已有的处理器
     root_logger.addHandler(handler)
+    
+    # 测试中文输出
+    test_logger = logging.getLogger("encoding_test")
+    test_logger.info("✓ 日志系统初始化完成 - 中文支持正常")
 
 setup_logging()
 logger = logging.getLogger(__name__)
