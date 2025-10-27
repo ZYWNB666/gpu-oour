@@ -13,6 +13,8 @@ GPU 利用率监控分析服务 - 主应用
 from fastapi import FastAPI, BackgroundTasks, Response
 from fastapi.responses import PlainTextResponse
 import logging
+import sys
+import io
 from typing import List
 from datetime import datetime
 
@@ -24,11 +26,34 @@ from app.metrics_exporter import metrics_exporter
 from app.prometheus_client import PrometheusClient
 import numpy as np
 
-# 配置日志
-logging.basicConfig(
-    level=getattr(logging, config.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# 配置日志（支持中文输出）
+def setup_logging():
+    """配置日志系统，确保中文正常显示"""
+    # Windows 环境需要特殊处理编码
+    if sys.platform == 'win32':
+        try:
+            # 重新包装标准输出，使用 UTF-8 编码
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+        except AttributeError:
+            # 某些环境可能没有 buffer 属性
+            pass
+    
+    # 创建日志处理器，明确指定 UTF-8 编码
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(getattr(logging, config.LOG_LEVEL))
+    handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+    
+    # 配置根日志
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, config.LOG_LEVEL))
+    root_logger.handlers.clear()  # 清除已有的处理器
+    root_logger.addHandler(handler)
+
+setup_logging()
 logger = logging.getLogger(__name__)
 
 # 创建 FastAPI 应用
