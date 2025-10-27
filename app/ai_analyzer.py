@@ -196,7 +196,13 @@ class AIAnalyzer:
         )
         
         resp.raise_for_status()
-        return resp.json()
+        response_data = resp.json()
+        
+        # 调试日志：输出响应结构
+        logger.debug(f"AI API response status: {resp.status_code}")
+        logger.debug(f"AI API response keys: {response_data.keys() if response_data else 'None'}")
+        
+        return response_data
     
     def _parse_response(
         self,
@@ -216,8 +222,26 @@ class AIAnalyzer:
             解析后的结果
         """
         try:
+            # 检查响应结构
+            if not response:
+                raise ValueError("AI API 返回空响应")
+            
             # OpenAI 格式
+            if "choices" not in response:
+                logger.error(f"Unexpected response format. Keys: {response.keys()}")
+                logger.error(f"Response content: {response}")
+                raise ValueError("响应格式不正确：缺少 'choices' 字段")
+            
+            if not response["choices"]:
+                raise ValueError("choices 列表为空")
+            
             content = response["choices"][0]["message"]["content"]
+            
+            # 调试日志
+            logger.debug(f"AI raw content (first 200 chars): {content[:200] if content else 'Empty'}")
+            
+            if not content or not content.strip():
+                raise ValueError("AI 返回内容为空")
             
             # 提取 JSON
             content = content.strip()
@@ -226,7 +250,10 @@ class AIAnalyzer:
             elif content.startswith("```"):
                 content = content.split("```")[1].split("```")[0]
             
-            data = json.loads(content.strip())
+            content = content.strip()
+            logger.debug(f"Extracted JSON content: {content[:200]}")
+            
+            data = json.loads(content)
             
             return AIAnalysisResult(
                 gpu_id=gpu_id,
@@ -238,14 +265,28 @@ class AIAnalyzer:
                 ai_adjusted_score=float(data.get("adjusted_score", raw_score))
             )
         
-        except Exception as e:
+        except json.JSONDecodeError as e:
             logger.error(f"Failed to parse AI response: {e}")
+            logger.error(f"Content to parse: {content if 'content' in locals() else 'N/A'}")
             # 返回默认结果
             return AIAnalysisResult(
                 gpu_id=gpu_id,
                 status="suspicious",
                 confidence=0.0,
-                reason="AI 分析失败",
+                reason="AI 响应 JSON 解析失败",
+                recommendation="建议人工检查",
+                raw_score=raw_score,
+                ai_adjusted_score=None
+            )
+        except Exception as e:
+            logger.error(f"Failed to parse AI response: {e}")
+            logger.error(f"Response structure: {response if response else 'None'}")
+            # 返回默认结果
+            return AIAnalysisResult(
+                gpu_id=gpu_id,
+                status="suspicious",
+                confidence=0.0,
+                reason=f"AI 分析失败: {str(e)}",
                 recommendation="建议人工检查",
                 raw_score=raw_score,
                 ai_adjusted_score=None

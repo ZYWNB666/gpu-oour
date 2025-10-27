@@ -64,13 +64,13 @@ class PrometheusClient:
         end = datetime.utcnow()
         start = end - timedelta(minutes=self.time_window)
         
-        # 构建查询条件
-        label_cond = f'{self.query_condition}, UUID="{gpu_uuid}"'
+        # 构建查询条件 - 所有标签需在同一个大括号内
+        labels = [f'pod!=""', f'UUID="{gpu_uuid}"']
         if additional_labels:
             for k, v in additional_labels.items():
-                label_cond += f', {k}="{v}"'
+                labels.append(f'{k}="{v}"')
         
-        query = f'{metric}{label_cond}'
+        query = f'{metric}{{{", ".join(labels)}}}'
         url = f"{self.base_url}/api/v1/query_range"
         
         try:
@@ -121,7 +121,8 @@ class PrometheusClient:
         end = datetime.utcnow()
         start = end - timedelta(minutes=self.time_window)
         
-        query = f'{metric}{self.query_condition}, UUID="{gpu_uuid}"'
+        # 构建查询条件 - 所有标签需在同一个大括号内
+        query = f'{metric}{{pod!="", UUID="{gpu_uuid}"}}'
         url = f"{self.base_url}/api/v1/query_range"
         
         try:

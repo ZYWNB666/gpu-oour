@@ -146,16 +146,30 @@ class Scheduler:
                     "recommendation": gpu_metrics.ai_analysis.recommendation
                 }
             
+            # 设置请求头，模拟正常的 HTTP 客户端
+            headers = {
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (compatible; GPU-Monitor/1.0)",
+                "Accept": "application/json"
+            }
+            
+            logger.debug(f"Calling Control API: {config.CONTROL_API}")
+            logger.debug(f"Payload: {payload}")
+            
             resp = requests.post(
                 config.CONTROL_API,
                 json=payload,
+                headers=headers,
                 timeout=5
             )
+            
+            logger.debug(f"Control API response status: {resp.status_code}")
+            logger.debug(f"Control API response: {resp.text[:200]}")
             
             if resp.status_code == 200:
                 logger.info(f"Control API called for {gpu_metrics.gpu_id}")
             else:
-                logger.warning(f"Control API returned {resp.status_code}")
+                logger.warning(f"Control API returned {resp.status_code}: {resp.text}")
         
         except Exception as e:
             logger.error(f"Failed to call control API: {e}")

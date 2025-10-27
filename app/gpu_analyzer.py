@@ -41,8 +41,8 @@ class GPUAnalyzer:
         power_usage = self.prom_client.query_range("DCGM_FI_DEV_POWER_USAGE", uuid)
         sm_clock = self.prom_client.query_range("DCGM_FI_DEV_SM_CLOCK", uuid)
         
-        # 转换显存为 MB
-        mem_used_mb = mem_used / (1024 * 1024) if mem_used > 0 else 0
+        # DCGM_FI_DEV_FB_USED 返回的单位已经是 MB，无需转换
+        mem_used_mb = mem_used
         
         # 计算综合评分
         score = (
