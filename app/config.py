@@ -118,6 +118,10 @@ class Config:
             ai_config.get("model", "gpt-4")
         )
         self.AI_THRESHOLD = float(ai_config.get("threshold", 0.7))
+        self.AI_MAX_TOKENS = int(os.getenv(
+            "AI_MAX_TOKENS",
+            ai_config.get("max_tokens", 2000)
+        ))
         
         # 日志配置
         logging_config = yaml_config.get("logging", {})
@@ -168,7 +172,8 @@ class Config:
             "ai": {
                 "enabled": self.AI_ENABLED,
                 "api_url": self.AI_API_URL,
-                "model": self.AI_MODEL
+                "model": self.AI_MODEL,
+                "max_tokens": self.AI_MAX_TOKENS
             },
             "logging": {
                 "level": self.LOG_LEVEL

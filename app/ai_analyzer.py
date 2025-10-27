@@ -23,6 +23,7 @@ class AIAnalyzer:
         self.api_key = config.AI_API_KEY
         self.model = config.AI_MODEL
         self.threshold = config.AI_THRESHOLD
+        self.max_tokens = config.AI_MAX_TOKENS
     
     def analyze_gpu(
         self,
@@ -185,7 +186,7 @@ class AIAnalyzer:
                 }
             ],
             "temperature": 0.3,
-            "max_tokens": 500
+            "max_completion_tokens": self.max_tokens  # 使用 max_completion_tokens 以支持推理模型
         }
         
         resp = requests.post(
@@ -235,13 +236,18 @@ class AIAnalyzer:
             if not response["choices"]:
                 raise ValueError("choices 列表为空")
             
-            content = response["choices"][0]["message"]["content"]
+            choice = response["choices"][0]
+            finish_reason = choice.get("finish_reason", "unknown")
+            content = choice["message"]["content"]
             
             # 调试日志
+            logger.debug(f"AI finish_reason: {finish_reason}")
             logger.debug(f"AI raw content (first 200 chars): {content[:200] if content else 'Empty'}")
             
             if not content or not content.strip():
-                raise ValueError("AI 返回内容为空")
+                if finish_reason == "length":
+                    raise ValueError(f"AI 达到最大 token 限制，输出被截断。请增加 max_completion_tokens 参数")
+                raise ValueError(f"AI 返回内容为空（finish_reason: {finish_reason}）")
             
             # 提取 JSON
             content = content.strip()
