@@ -91,10 +91,10 @@ class AIAnalyzer:
    - 变化率: {gpu_util_stats['change_rate']:.2f}%
 
 2. **显存使用**
-   - 平均值: {mem_used_stats['mean']/1e9:.2f} GB
-   - 最小值: {mem_used_stats['min']/1e9:.2f} GB
-   - 最大值: {mem_used_stats['max']/1e9:.2f} GB
-   - 标准差: {mem_used_stats['std']/1e9:.2f} GB
+   - 平均值: {mem_used_stats['mean']/1024:.2f} GB
+   - 最小值: {mem_used_stats['min']/1024:.2f} GB
+   - 最大值: {mem_used_stats['max']/1024:.2f} GB
+   - 标准差: {mem_used_stats['std']/1024:.2f} GB
 
 3. **功率使用**
    - 平均值: {power_stats['mean']:.2f} W

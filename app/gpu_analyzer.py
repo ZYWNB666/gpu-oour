@@ -38,17 +38,29 @@ class GPUAnalyzer:
         gpu_util = self.prom_client.query_range("DCGM_FI_DEV_GPU_UTIL", uuid)
         mem_copy = self.prom_client.query_range("DCGM_FI_DEV_MEM_COPY_UTIL", uuid)
         mem_used = self.prom_client.query_range("DCGM_FI_DEV_FB_USED", uuid)
+        mem_free = self.prom_client.query_range("DCGM_FI_DEV_FB_FREE", uuid)
         power_usage = self.prom_client.query_range("DCGM_FI_DEV_POWER_USAGE", uuid)
         sm_clock = self.prom_client.query_range("DCGM_FI_DEV_SM_CLOCK", uuid)
         
-        # DCGM_FI_DEV_FB_USED 返回的单位已经是 MB，无需转换
+        # DCGM_FI_DEV_FB_USED/FREE 返回的单位已经是 MB
         mem_used_mb = mem_used
+        mem_free_mb = mem_free
+        
+        # 计算显存总量（动态获取，不使用固定默认值）
+        mem_total_mb = mem_used_mb + mem_free_mb
+        if mem_total_mb <= 0:
+            # 如果无法获取实际总量，使用配置的默认值
+            mem_total_mb = config.DEFAULT_GPU_MEMORY_MB
+            logger.warning(f"GPU {uuid}: Unable to get actual memory total, using default {mem_total_mb} MB")
+        
+        # 计算显存使用率
+        mem_usage_ratio = min(mem_used_mb / mem_total_mb, 1.0) if mem_total_mb > 0 else 0.0
         
         # 计算综合评分
         score = (
             config.GPU_UTIL_WEIGHT * (gpu_util / 100) +
             config.MEM_COPY_WEIGHT * (mem_copy / 100) +
-            config.MEM_USED_WEIGHT * min(mem_used_mb / config.DEFAULT_GPU_MEMORY_MB, 1.0) +
+            config.MEM_USED_WEIGHT * mem_usage_ratio +
             config.POWER_WEIGHT * min(power_usage / config.DEFAULT_GPU_POWER_W, 1.0)
         )
         
@@ -66,6 +78,8 @@ class GPUAnalyzer:
             gpu_util=round(gpu_util, 2),
             mem_copy=round(mem_copy, 2),
             mem_used_mb=round(mem_used_mb, 1),
+            mem_total_mb=round(mem_total_mb, 1),
+            mem_usage_percent=round(mem_usage_ratio * 100, 2),
             power_usage=round(power_usage, 1),
             sm_clock=round(sm_clock, 0),
             score=score_percent,

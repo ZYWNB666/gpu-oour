@@ -37,6 +37,8 @@ class GPUMetrics(BaseModel):
     gpu_util: float = Field(..., description="GPU 核心利用率 (%)")
     mem_copy: float = Field(..., description="内存拷贝利用率 (%)")
     mem_used_mb: float = Field(..., description="显存使用量 (MB)")
+    mem_total_mb: float = Field(..., description="显存总量 (MB)")
+    mem_usage_percent: float = Field(..., description="显存使用率 (%)")
     power_usage: float = Field(..., description="功率使用 (W)")
     sm_clock: float = Field(..., description="SM 时钟频率 (MHz)")
     

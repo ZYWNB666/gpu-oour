@@ -37,6 +37,20 @@ class MetricsExporter:
             ['gpu_id', 'pod', 'namespace', 'hostname']
         )
         
+        # 显存总量
+        self.gpu_memory_total = Gauge(
+            'gpu_memory_total_mb',
+            'GPU显存总量 (MB)',
+            ['gpu_id', 'pod', 'namespace', 'hostname', 'model']
+        )
+        
+        # 显存使用率
+        self.gpu_memory_usage = Gauge(
+            'gpu_memory_usage_percent',
+            'GPU显存使用率 (%)',
+            ['gpu_id', 'pod', 'namespace', 'hostname']
+        )
+        
         # 功率使用
         self.gpu_power = Gauge(
             'gpu_power_usage_watts',
@@ -172,6 +186,11 @@ class MetricsExporter:
                 
                 self.gpu_util.labels(**labels).set(r.gpu_util)
                 self.gpu_memory.labels(**labels).set(r.mem_used_mb)
+                self.gpu_memory_total.labels(
+                    **labels,
+                    model=r.model_name[:20] if r.model_name else 'unknown'
+                ).set(r.mem_total_mb)
+                self.gpu_memory_usage.labels(**labels).set(r.mem_usage_percent)
                 self.gpu_power.labels(**labels).set(r.power_usage)
                 self.gpu_mem_copy.labels(**labels).set(r.mem_copy)
                 self.gpu_sm_clock.labels(**labels).set(r.sm_clock)

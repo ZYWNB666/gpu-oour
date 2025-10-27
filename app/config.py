@@ -49,7 +49,10 @@ class Config:
             "PROM_URL",
             yaml_config.get("prometheus", {}).get("url", "http://prometheus:9090")
         )
-        self.QUERY_CONDITION = '{pod!=""}'  # 固定值
+        self.QUERY_CONDITION = os.getenv(
+            "QUERY_CONDITION",
+            yaml_config.get("prometheus", {}).get("query_condition", '{pod!=""}')
+        )
         self.TIME_WINDOW_MIN = int(os.getenv(
             "TIME_WINDOW_MIN",
             yaml_config.get("prometheus", {}).get("time_window_min", 10)
