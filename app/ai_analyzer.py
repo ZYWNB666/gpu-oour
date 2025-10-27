@@ -5,6 +5,7 @@ AI 分析模块
 import requests
 import json
 import logging
+import time
 from typing import Optional
 
 from .config import config
@@ -24,6 +25,8 @@ class AIAnalyzer:
         self.model = config.AI_MODEL
         self.threshold = config.AI_THRESHOLD
         self.max_tokens = config.AI_MAX_TOKENS
+        self.retry_times = config.AI_RETRY_TIMES
+        self.retry_delay = config.AI_RETRY_DELAY
     
     def analyze_gpu(
         self,
@@ -32,7 +35,7 @@ class AIAnalyzer:
         raw_score: float
     ) -> Optional[AIAnalysisResult]:
         """
-        使用 AI 分析 GPU 使用情况
+        使用 AI 分析 GPU 使用情况（带重试机制）
         
         Args:
             gpu_id: GPU ID
@@ -46,22 +49,40 @@ class AIAnalyzer:
             logger.debug("AI analysis is disabled")
             return None
         
-        try:
-            # 构建 AI Prompt
-            prompt = self._build_prompt(time_series_data, raw_score)
-            
-            # 调用 AI API
-            ai_response = self._call_ai_api(prompt)
-            
-            # 解析响应
-            result = self._parse_response(gpu_id, ai_response, raw_score)
-            
-            logger.info(f"AI analysis for {gpu_id}: {result.status} (confidence: {result.confidence})")
-            return result
+        # 构建 AI Prompt（只构建一次）
+        prompt = self._build_prompt(time_series_data, raw_score)
         
-        except Exception as e:
-            logger.error(f"AI analysis failed for {gpu_id}: {e}")
-            return None
+        # 重试逻辑
+        last_error = None
+        for attempt in range(self.retry_times):
+            try:
+                if attempt > 0:
+                    # 指数退避：第1次重试等待 retry_delay，第2次等待 2*retry_delay，以此类推
+                    delay = self.retry_delay * (2 ** (attempt - 1))
+                    logger.info(f"AI retry {attempt}/{self.retry_times} for {gpu_id} after {delay:.1f}s...")
+                    time.sleep(delay)
+                
+                # 调用 AI API
+                ai_response = self._call_ai_api(prompt)
+                
+                # 解析响应
+                result = self._parse_response(gpu_id, ai_response, raw_score)
+                
+                # 成功
+                if attempt > 0:
+                    logger.info(f"AI analysis succeeded on retry {attempt} for {gpu_id}")
+                logger.info(f"AI analysis for {gpu_id}: {result.status} (confidence: {result.confidence})")
+                return result
+            
+            except Exception as e:
+                last_error = e
+                logger.warning(f"AI analysis attempt {attempt + 1}/{self.retry_times} failed for {gpu_id}: {e}")
+                
+                # 如果是最后一次尝试，记录错误
+                if attempt == self.retry_times - 1:
+                    logger.error(f"AI analysis failed for {gpu_id} after {self.retry_times} attempts: {last_error}")
+        
+        return None
     
     def _build_prompt(self, data: GPUTimeSeriesData, raw_score: float) -> str:
         """

@@ -125,6 +125,14 @@ class Config:
             "AI_MAX_TOKENS",
             ai_config.get("max_tokens", 2000)
         ))
+        self.AI_RETRY_TIMES = int(os.getenv(
+            "AI_RETRY_TIMES",
+            ai_config.get("retry_times", 3)
+        ))
+        self.AI_RETRY_DELAY = float(os.getenv(
+            "AI_RETRY_DELAY",
+            ai_config.get("retry_delay", 2.0)
+        ))
         
         # 日志配置
         logging_config = yaml_config.get("logging", {})
@@ -176,7 +184,9 @@ class Config:
                 "enabled": self.AI_ENABLED,
                 "api_url": self.AI_API_URL,
                 "model": self.AI_MODEL,
-                "max_tokens": self.AI_MAX_TOKENS
+                "max_tokens": self.AI_MAX_TOKENS,
+                "retry_times": self.AI_RETRY_TIMES,
+                "retry_delay": self.AI_RETRY_DELAY
             },
             "logging": {
                 "level": self.LOG_LEVEL
